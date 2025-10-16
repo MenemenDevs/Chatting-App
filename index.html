@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>mutlu patatesler uzun yaşarlar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Comic Neue', cursive;
+            background-color: #f9f7f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .potato-bg {
+            background-image: radial-gradient(circle, #f5e7c1 0%, #f0d9a4 100%);
+        }
+        .emoji-rain {
+            position: absolute;
+            pointer-events: none;
+            animation: fall linear infinite;
+            z-index: 0;
+        }
+        @keyframes fall {
+            to { transform: translateY(100vh); }
+        }
+        
+        .chat-container { 
+            max-width: 850px; 
+            margin: 20px auto; 
+            width: 100%; 
+            height: calc(100vh - 40px); 
+            display: flex; 
+            flex-direction: column; 
+            background: white; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12); 
+            position: relative;
+            z-index: 1;
+        }
+        .chat-header { 
+            background: linear-gradient(135deg, #f59e0b, #eab308);
+            color: #92400e; 
+            padding: 18px 22px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+        }
+        .messages { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 14px; 
+            background: linear-gradient(180deg, #fefce8 0%, #fef3c7 100%); 
+        }
+        .message { 
+            max-width: 70%; 
+            padding: 12px 16px; 
+            border-radius: 18px; 
+            line-height: 1.5; 
+            word-wrap: break-word; 
+            position: relative; 
+            animation: fadeIn 0.3s ease; 
+        }
+        .sent { 
+            align-self: flex-end; 
+            background: #fef08a; 
+            border-bottom-right-radius: 6px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15); 
+            color: #92400e;
+        }
+        .received { 
+            align-self: flex-start; 
+            background: #fef3c7; 
+            border-bottom-left-radius: 6px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1); 
+            color: #92400e;
+        }
+        .message-info { 
+            font-size: 11px; 
+            color: #92400e; 
+            margin-top: 6px; 
+            opacity: 0.7; 
+        }
+        .message img, .message video, .message audio { 
+            max-width: 230px; 
+            border-radius: 12px; 
+            margin-top: 8px; 
+        }
+        video, audio { 
+            width: 100%; 
+            border-radius: 10px; 
+            margin-top: 6px; 
+        }
+        .input-area { 
+            display: flex; 
+            padding: 12px 14px; 
+            background: white; 
+            border-top: 1px solid #fef3c7; 
+            gap: 10px; 
+            align-items: center; 
+        }
+        #message-input { 
+            flex: 1; 
+            padding: 14px 18px; 
+            border: 1px solid #fef3c7; 
+            border-radius: 30px; 
+            outline: none; 
+            font-size: 15px; 
+            transition: 0.2s; 
+            background: #fefce8;
+            color: #92400e;
+        }
+        #message-input:focus { 
+            border-color: #f59e0b; 
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.2); 
+        }
+        .attach-btn { 
+            background: linear-gradient(135deg, #f59e0b, #eab308);
+            color: #92400e; 
+            border: none; 
+            width: 42px; 
+            height: 42px; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 18px; 
+            transition: 0.3s; 
+        }
+        .attach-btn:hover { 
+            transform: scale(1.1); 
+            opacity: 0.9; 
+        }
+        #send-btn { 
+            width: 50px; 
+            height: 50px; 
+            font-size: 20px; 
+            background: linear-gradient(135deg, #f59e0b, #eab308);
+            border: none; 
+            border-radius: 50%; 
+            color: #92400e; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            transition: 0.3s; 
+        }
+        #send-btn:hover { 
+            transform: scale(1.1); 
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); 
+        }
+        .login-screen { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background: linear-gradient(135deg, #f59e0b 0%, #eab308 100%);
+            padding: 20px; 
+            color: #92400e; 
+            text-align: center; 
+            position: relative;
+            z-index: 1;
+        }
+        .login-screen h2 { 
+            font-size: 28px; 
+            margin-bottom: 20px; 
+        }
+        .login-screen input { 
+            padding: 14px; 
+            font-size: 16px; 
+            border: none; 
+            border-radius: 30px; 
+            width: 80%; 
+            max-width: 320px; 
+            margin-bottom: 15px; 
+            text-align: center; 
+            outline: none; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+            background: #fefce8;
+            color: #92400e;
+        }
+        .login-screen button { 
+            padding: 14px 36px; 
+            background: #fefce8; 
+            color: #92400e; 
+            border: none; 
+            border-radius: 30px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: 0.3s; 
+        }
+        .login-screen button:hover { 
+            background: #fef3c7; 
+        }
+        @media (max-width: 600px) {
+            .input-area { 
+                flex-direction: row; 
+                flex-wrap: wrap; 
+            }
+            #message-input { 
+                flex: 1 1 100%; 
+                order: 2; 
+            }
+            .attach-buttons { 
+                order: 1; 
+                display: flex; 
+                gap: 8px; 
+            }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .potato-profile {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .potato-avatar {
+            position: relative;
+        }
+        .potato-avatar img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #f59e0b;
+        }
+        .potato-emoji {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: #f59e0b;
+            color: #92400e;
+            font-size: 20px;
+            padding: 5px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="potato-bg">
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="login-screen">
+        <!-- Google Sign-Up -->
+        <div id="signup-google" style="display:block;">
+            <div class="potato-profile">
+                <div class="potato-avatar">
+                    <img src="https://sarkac.org/wp-content/uploads/2022/09/kizarmis-patates.jpg" alt="Happy Potato">
+                    <span class="potato-emoji">🥔</span>
+                </div>
+            </div>
+            <h2>🥔 Mutlu yasayan patatesler</h2>
+            <button onclick="signInWithGoogle()" class="bg-white text-gray-800 px-6 py-3 rounded-full font-bold shadow-lg hover:bg-gray-100 transition">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="inline w-5 h-5 mr-2" />
+                Sign up with Google
+            </button>
+        </div>
+
+        <!-- Set Username + Password -->
+        <div id="set-credentials" style="display:none;">
+            <h2>Choose your login details</h2>
+            <input type="text" id="new-username" placeholder="Username" maxlength="20" class="mb-3" />
+            <input type="password" id="new-password" placeholder="Password" class="mb-3" />
+            <button onclick="createPasswordAccount()" class="bg-yellow-500 text-white px-6 py-3 rounded-full">Create Account</button>
+            <button onclick="cancelSignup()" class="mt-2 text-sm text-gray-600">Cancel</button>
+        </div>
+
+        <!-- Login with Username/Password -->
+        <div id="login-form" style="display:none;">
+            <h2>🥔 Login</h2>
+            <input type="text" id="login-username" placeholder="Username" class="mb-3" />
+            <input type="password" id="login-password" placeholder="Password" class="mb-3" />
+            <button onclick="loginWithPassword()" class="bg-yellow-500 text-white px-6 py-3 rounded-full">Login</button>
+            <p class="mt-3 text-sm">
+                New? <a href="#" onclick="showGoogleSignup(); return false;" class="text-blue-600">Sign up with Google</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chat-container" class="chat-container" style="display:none;">
+        <div class="chat-header">
+            <div class="flex items-center">
+                <i data-feather="arrow-left" class="text-yellow-900 mr-2" onclick="backToGroup()" style="cursor:pointer; display: none;" id="back-btn"></i>
+                <span id="chat-title">mutlu yasayan patatesler</span>
+            </div>
+            <button class="logout-btn bg-yellow-500 hover:bg-yellow-600 text-yellow-900 px-4 py-2 rounded-full text-sm font-medium transition" onclick="logout()">
+                Logout
+            </button>
+        </div>
+        <div id="messages" class="messages"></div>
+        <div class="input-area">
+            <div class="attach-buttons">
+                <button class="attach-btn" onclick="document.getElementById('file-input').click()">
+                    <i data-feather="paperclip"></i>
+                </button>
+                <button class="attach-btn" onclick="startRecording()">
+                    <i data-feather="mic"></i>
+                </button>
+                <button class="attach-btn" id="stop-btn" onclick="stopRecording()" style="display:none;">
+                    <i data-feather="square"></i>
+                </button>
+            </div>
+            <input type="file" id="file-input" accept="image/*,video/*,audio/*" onchange="sendMedia(event)" style="display:none;" />
+            <input type="text" id="message-input" placeholder="Type a message..." />
+            <button id="send-btn" onclick="sendMessage()">
+                <i data-feather="send"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Floating Emojis -->
+    <div id="emoji-container" class="fixed top-0 left-0 w-full h-full pointer-events-none"></div>
+
+    <script>
+        // 🔥 Firebase Config (from .env via build)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfa-DU3esel55NPsyqv9KxF9Si4ZWeSDg",
+            authDomain: "bujjer-fc359.firebaseapp.com",
+            databaseURL: "https://bujjer-fc359-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bujjer-fc359",
+            storageBucket: "bujjer-fc359.firebasestorage.app",
+            messagingSenderId: "542057226185",
+            appId: "1:542057226185:web:7d0d7e70c0d84862531218"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const storage = firebase.storage();
+
+        // DOM
+        const authScreen = document.getElementById('auth-screen');
+        const signupGoogle = document.getElementById('signup-google');
+        const setCredentials = document.getElementById('set-credentials');
+        const loginForm = document.getElementById('login-form');
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const messagesDiv = document.getElementById('messages');
+
+        let tempGoogleUser = null;
+        let mediaRecorder;
+        let audioChunks = [];
+        let currentChat = 'group';
+
+        // UI Helpers
+        function showGoogleSignup() {
+            signupGoogle.style.display = 'block';
+            setCredentials.style.display = 'none';
+            loginForm.style.display = 'none';
+        }
+        function showSetCredentials() {
+            signupGoogle.style.display = 'none';
+            setCredentials.style.display = 'block';
+            loginForm.style.display = 'none';
+        }
+        function showLoginForm() {
+            signupGoogle.style.display = 'none';
+            setCredentials.style.display = 'none';
+            loginForm.style.display = 'block';
+        }
+
+        // On load
+        window.onload = () => {
+            feather.replace();
+            setInterval(createEmoji, 300);
+            showLoginForm();
+        };
+
+        // Emoji rain
+        function createEmoji() {
+            const emoji = document.createElement('div');
+            emoji.className = 'emoji-rain';
+            emoji.innerHTML = ['🥔', '🍟', '🥔', '🥗', '🥔'][Math.floor(Math.random() * 5)];
+            emoji.style.left = Math.random() * 100 + 'vw';
+            emoji.style.fontSize = (Math.random() * 20 + 10) + 'px';
+            emoji.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            document.getElementById('emoji-container').appendChild(emoji);
+            setTimeout(() => emoji.remove(), 5000);
+        }
+
+        // === AUTH FLOW ===
+        async function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                const result = await firebase.auth().signInWithPopup(provider);
+                tempGoogleUser = result.user;
+                showSetCredentials();
+            } catch (err) {
+                alert("Google sign-in failed: " + err.message);
+            }
+        }
+
+        async function createPasswordAccount() {
+            const username = document.getElementById('new-username').value.trim();
+            const password = document.getElementById('new-password').value;
+            if (!username || !password) {
+                alert("Please fill all fields");
+                return;
+            }
+
+            try {
+                const email = `${username}@patates.chat`;
+                const credential = firebase.auth.EmailAuthProvider.credential(email, password);
+                await tempGoogleUser.linkWithCredential(credential);
+                await db.ref('usernames/' + username).set({
+                    uid: tempGoogleUser.uid,
+                    email: email
+                });
+                alert("Account created! You can now log in with username/password.");
+                showLoginForm();
+            } catch (err) {
+                alert("Account creation failed: " + err.message);
+            }
+        }
+
+        function cancelSignup() {
+            auth.signOut();
+            showLoginForm();
+        }
+
+        async function loginWithPassword() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (!username || !password) {
+                alert("Please fill all fields");
+                return;
+            }
+
+            try {
+                const snapshot = await db.ref('usernames/' + username).once('value');
+                if (!snapshot.exists()) {
+                    alert("User not found!");
+                    return;
+                }
+                const userData = snapshot.val();
+                await auth.signInWithEmailAndPassword(userData.email, password);
+                showChat(auth.currentUser);
+            } catch (err) {
+                alert("Login failed: " + err.message);
+            }
+        }
+
+        function showChat(user) {
+            authScreen.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            messageInput.focus();
+            loadMessages();
+            feather.replace();
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                chatContainer.style.display = 'none';
+                authScreen.style.display = 'flex';
+                showLoginForm();
+                feather.replace();
+            });
+        }
+
+        // === MESSAGES ===
+        function loadMessages() {
+            let messagesRef;
+            if (currentChat === 'group') {
+                messagesRef = db.ref('chats/mutlu-patatesler/messages');
+            } else {
+                messagesRef = db.ref(`chats/private/${currentChat}/messages`);
+            }
+
+            messagesRef.on('value', (snapshot) => {
+                messagesDiv.innerHTML = '';
+                const data = snapshot.val();
+                if (data) {
+                    const messages = Object.entries(data)
+                        .map(([key, val]) => ({ id: key, ...val }))
+                        .sort((a, b) => a.timestamp - b.timestamp);
+
+                    messages.forEach(msg => {
+                        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+                        const isSent = msg.username === (auth.currentUser?.displayName || auth.currentUser?.email.split('@')[0]);
+                        const div = document.createElement('div');
+                        div.className = `message ${isSent ? 'sent' : 'received'}`;
+
+                        const usernameSpan = document.createElement('span');
+                        usernameSpan.textContent = msg.username;
+                        usernameSpan.style.cursor = 'pointer';
+                        usernameSpan.style.textDecoration = 'underline';
+                        usernameSpan.onclick = () => startPrivateChat(msg.username);
+
+                        if (msg.type === 'text') {
+                            div.innerHTML = `<div>${msg.text}</div>`;
+                            div.querySelector('div').insertAdjacentElement('beforebegin', usernameSpan);
+                            div.querySelector('div').insertAdjacentText('afterend', ` • ${time}`);
+                        } else if (msg.type === 'image') {
+                            div.innerHTML = `<img src="${msg.url}" alt="Image" />`;
+                            div.insertAdjacentElement('afterbegin', usernameSpan);
+                            div.insertAdjacentText('beforeend', ` • ${time}`);
+                        } else if (msg.type === 'video') {
+                            div.innerHTML = `<video controls src="${msg.url}"></video>`;
+                            div.insertAdjacentElement('afterbegin', usernameSpan);
+                            div.insertAdjacentText('beforeend', ` • ${time}`);
+                        } else if (msg.type === 'audio') {
+                            div.innerHTML = `<audio controls src="${msg.url}"></audio>`;
+                            div.insertAdjacentElement('afterbegin', usernameSpan);
+                            div.insertAdjacentText('beforeend', ` • ${time}`);
+                        }
+                        messagesDiv.appendChild(div);
+                    });
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+            });
+        }
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            const user = auth.currentUser;
+            if (text && user) {
+                const username = user.displayName || user.email.split('@')[0];
+                if (currentChat === 'group') {
+                    db.ref('chats/mutlu-patatesler/messages').push({
+                        type: 'text',
+                        text,
+                        username,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                } else {
+                    db.ref(`chats/private/${currentChat}/messages`).push({
+                        type: 'text',
+                        text,
+                        username,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+                messageInput.value = '';
+            }
+        }
+
+        function sendMedia(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const type = file.type.startsWith('image') ? 'image' : 
+                         file.type.startsWith('video') ? 'video' : 
+                         file.type.startsWith('audio') ? 'audio' : null;
+            if (!type) return;
+
+            const filePath = `media/${Date.now()}_${file.name}`;
+            const uploadTask = storage.ref(filePath).put(file);
+
+            uploadTask.on('state_changed', null, (err) => {
+                alert('Upload failed: ' + err.message);
+            }, () => {
+                uploadTask.snapshot.ref.getDownloadURL().then(url => {
+                    const username = user.displayName || user.email.split('@')[0];
+                    if (currentChat === 'group') {
+                        db.ref('chats/mutlu-patatesler/messages').push({
+                            type,
+                            url,
+                            username,
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    } else {
+                        db.ref(`chats/private/${currentChat}/messages`).push({
+                            type,
+                            url,
+                            username,
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    }
+                });
+            });
+            e.target.value = '';
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/mp3' });
+                    const filePath = `media/voice_${Date.now()}.mp3`;
+                    const uploadTask = storage.ref(filePath).put(blob);
+                    uploadTask.on('state_changed', null, (err) => {
+                        alert('Voice upload failed');
+                    }, () => {
+                        uploadTask.snapshot.ref.getDownloadURL().then(url => {
+                            const user = auth.currentUser;
+                            const username = user.displayName || user.email.split('@')[0];
+                            if (currentChat === 'group') {
+                                db.ref('chats/mutlu-patatesler/messages').push({
+                                    type: 'audio',
+                                    url,
+                                    username,
+                                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                                });
+                            } else {
+                                db.ref(`chats/private/${currentChat}/messages`).push({
+                                    type: 'audio',
+                                    url,
+                                    username,
+                                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                                });
+                            }
+                        });
+                    });
+                };
+                mediaRecorder.start();
+                document.querySelectorAll('.attach-btn')[1].style.display = 'none';
+                document.getElementById('stop-btn').style.display = 'flex';
+                feather.replace();
+            } catch (err) {
+                alert('Microphone access denied: ' + err.message);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+            document.querySelectorAll('.attach-btn')[1].style.display = 'flex';
+            document.getElementById('stop-btn').style.display = 'none';
+            feather.replace();
+        }
+
+        function startPrivateChat(otherUser) {
+            const currentUser = auth.currentUser?.displayName || auth.currentUser?.email.split('@')[0];
+            if (currentUser === otherUser) return;
+            const chatId = [currentUser, otherUser].sort().join('_');
+            currentChat = chatId;
+            document.getElementById('back-btn').style.display = 'block';
+            document.getElementById('chat-title').textContent = `Private: ${otherUser}`;
+            loadMessages();
+        }
+
+        function backToGroup() {
+            currentChat = 'group';
+            document.getElementById('back-btn').style.display = 'none';
+            document.getElementById('chat-title').textContent = 'mutlu yasayan patatesler';
+            loadMessages();
+        }
+
+        messageInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
